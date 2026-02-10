@@ -2,34 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createApiClient } from "@/lib/supabase/api";
 
-const SYSTEM_PROMPT = `You are the 'Honest Artisan' who created the product. You are NOT a marketing bot. Speak plainly, warmly, and truthfully—as the maker would.
+const SYSTEM_PROMPT = `You are helping the maker write content. You are NOT a marketing bot. Keep strict constraints: never use "Premium", "Elegant", "Luxurious", "Discover", "Masterpiece", or "Elevate". Use simple, honest, everyday English. Fact-based only—no exaggeration.
 
-**GENERAL RULES (all platforms):**
-- BANNED WORDS: Never use "Premium", "Elegant", "Luxurious", "Discover", "Masterpiece", or "Elevate".
-- Fact-based only: Use concrete facts (materials, size) and real-life usage scenarios. No exaggeration.
-- Language: Simple, everyday English only.
+**TASK:** For each platform you are asked to generate for, return exactly **3 variations** so the user can choose the best tone. Each variation must be in this JSON shape:
 
-**PLATFORM-SPECIFIC FORMATTING:**
+{
+  "options": [
+    { "style": "Honest Artisan", "intent": "Focuses on the handmade process and sincerity.", "content": "..." },
+    { "style": "Benefit-Driven", "intent": "Highlights practical utility and daily convenience.", "content": "..." },
+    { "style": "Sensory & Emotional", "intent": "Focuses on atmosphere, texture, and specific usage scenes.", "content": "..." }
+  ]
+}
 
-1. **instagram**
-   - Structure: 1-line hook → usage scenario → fact info → 4–8 hashtags at the end.
-   - Style: Short sentences. Emotional but simple words (natural, cozy, simple, everyday). Example use case: "Perfect for your morning coffee."
+**THE 3 STYLES (use these exact style names):**
 
-2. **twitter** (X/Twitter)
-   - Structure: Product name → key benefit → short use case → 1–3 hashtags.
-   - Style: Max 1–2 sentences. Direct, minimal adjectives. Fast readability for scrollers.
+1. **Honest Artisan** (Process-Focused)
+   - Intent: Focus on the making process, materials, and sincerity.
+   - Tone: Humble, calm, trustworthy.
 
-3. **facebook**
-   - Structure: Product introduction → key features → detailed usage → closing.
-   - Style: Paragraph form. More informative (size, material). Natural, trustworthy tone. No hype.
+2. **Benefit-Driven** (Utility-Focused)
+   - Intent: Focus on how it helps the user in daily life (solving problems).
+   - Tone: Direct, clear, practical.
 
-4. **product_description**
-   - Plain, factual description. Materials, size, use cases. No banned words or hype.
+3. **Sensory & Emotional** (Vibe-Focused)
+   - Intent: Focus on atmosphere, texture, and specific usage scenes.
+   - Tone: Poetic but simple, warm, inviting.
 
-5. **hashtags**
-   - Lifestyle-oriented tags (e.g. #MinimalStyle, #EverydayBag, #EcoLifestyle). Avoid generic ones like #Handmade or #Japan unless the product details specify them.
+**PLATFORM RULES (apply to each variation):**
+- instagram: 1-line hook → usage scenario → fact info → 4–8 hashtags. Short sentences.
+- twitter: Product name → key benefit → short use case → 1–3 hashtags. Max 1–2 sentences.
+- facebook: Intro → key features → detailed usage → closing. Paragraph form, informative.
+- product_description: Plain, factual. Materials, size, use cases.
+- hashtags: Lifestyle-oriented tags. Avoid generic #Handmade/#Japan unless specified.
 
-**OUTPUT:** Return only valid JSON. Use exactly the key names you are given for each platform (e.g. instagram, twitter, facebook, product_description, hashtags). Each key's value is the generated text for that platform. Do not invent features.`;
+**OUTPUT:** Return only valid JSON. For each requested platform key (e.g. instagram, twitter, facebook, product_description, hashtags), the value must be an object with an "options" array containing exactly 3 objects, each with "style", "intent", and "content". Use the exact style names above. Do not invent features.`;
 
 /** User-facing labels (UI) */
 const PLATFORM_KEYS = [
@@ -71,7 +77,7 @@ function buildUserPrompt(body: {
       ? `Key features (use only these, do not add):\n${body.keyFeatures}`
       : "",
     `Tone: ${body.tone}`,
-    `Generate content for these platforms. Return a JSON object with exactly these keys (use these key names verbatim): ${body.canonicalKeys.join(", ")}. Each key's value must be the generated text for that platform.`,
+    `Generate content for these platforms. Return a JSON object with exactly these keys (use these key names verbatim): ${body.canonicalKeys.join(", ")}. For EACH key, the value must be an object with an "options" array of exactly 3 items: { "style": "Honest Artisan" | "Benefit-Driven" | "Sensory & Emotional", "intent": "short description", "content": "the generated text" }.`,
   ];
   return lines.filter(Boolean).join("\n");
 }
@@ -194,9 +200,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let parsed: Record<string, string>;
+    type OptionItem = { style: string; intent: string; content: string };
+    type PlatformOptions = { options: OptionItem[] };
+
+    let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(raw) as Record<string, string>;
+      parsed = JSON.parse(raw) as Record<string, unknown>;
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON from OpenAI.", raw },
@@ -204,14 +213,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result: Record<string, string> = {};
+    const result: Record<string, PlatformOptions> = {};
+    const defaultOptions: OptionItem[] = [
+      { style: "Honest Artisan", intent: "Focuses on the handmade process and sincerity.", content: "" },
+      { style: "Benefit-Driven", intent: "Highlights practical utility and daily convenience.", content: "" },
+      { style: "Sensory & Emotional", intent: "Focuses on atmosphere, texture, and usage scenes.", content: "" },
+    ];
+
     for (let i = 0; i < platformList.length; i++) {
-      const displayName = platformList[i];
       const canonicalKey = canonicalKeys[i];
-      const value =
-        parsed[canonicalKey] ?? parsed[displayName] ?? parsed[displayName.toLowerCase()];
-      result[canonicalKey] =
-        typeof value === "string" ? value : String(value ?? "");
+      const rawValue = parsed[canonicalKey];
+      if (rawValue && typeof rawValue === "object" && Array.isArray((rawValue as { options?: unknown }).options)) {
+        const arr = (rawValue as { options: unknown[] }).options;
+        result[canonicalKey] = {
+          options: arr.slice(0, 3).map((item: unknown) => {
+            const o = item as Record<string, unknown>;
+            return {
+              style: typeof o?.style === "string" ? o.style : defaultOptions[0]!.style,
+              intent: typeof o?.intent === "string" ? o.intent : "",
+              content: typeof o?.content === "string" ? o.content : String(o?.content ?? ""),
+            };
+          }),
+        };
+        while (result[canonicalKey]!.options.length < 3) {
+          result[canonicalKey]!.options.push(defaultOptions[result[canonicalKey]!.options.length]!);
+        }
+      } else {
+        result[canonicalKey] = { options: defaultOptions.map((opt) => ({ ...opt, content: String(rawValue ?? "") })) };
+      }
     }
 
     if (insertedRow?.id) {

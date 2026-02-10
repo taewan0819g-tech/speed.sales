@@ -39,6 +39,11 @@ const RESULT_KEY_TO_LABEL: Record<string, string> = {
   hashtags: "Hashtags",
 };
 
+/** One variation (style + intent + content) */
+export type ResultOption = { style: string; intent: string; content: string };
+/** Per-platform: either legacy string or new shape with 3 options */
+export type PlatformResult = string | { options: ResultOption[] };
+
 type Platform = (typeof PLATFORMS)[number];
 
 type ProductRow = {
@@ -51,7 +56,7 @@ type ProductRow = {
   key_features: string | null;
   tone: string | null;
   target_platforms: string[];
-  generated_contents: Record<string, string> | null;
+  generated_contents: Record<string, PlatformResult> | null;
   created_at: string;
 };
 
@@ -70,7 +75,7 @@ export default function Home() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Record<string, string> | null>(null);
+  const [result, setResult] = useState<Record<string, PlatformResult> | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
 
@@ -116,7 +121,7 @@ export default function Home() {
     );
     setResult(
       row.generated_contents && typeof row.generated_contents === "object"
-        ? row.generated_contents
+        ? (row.generated_contents as Record<string, PlatformResult>)
         : null
     );
     setSelectedProductId(id);
@@ -235,7 +240,7 @@ export default function Home() {
         createdAt?: string;
         [k: string]: unknown;
       };
-      setResult(platformResults as Record<string, string>);
+      setResult(platformResults as Record<string, PlatformResult>);
       if (productId && name && createdAt) {
         setHistoryItems((prev) => [
           { id: productId, product_name: name, created_at: createdAt },
@@ -262,6 +267,9 @@ export default function Home() {
   };
 
   const resultEntries = result ? Object.entries(result) : [];
+
+  const isOptionsShape = (v: PlatformResult): v is { options: ResultOption[] } =>
+    typeof v === "object" && v !== null && Array.isArray((v as { options?: unknown }).options);
 
   return (
     <div className="flex min-h-full">
@@ -466,34 +474,77 @@ export default function Home() {
               </div>
             )}
             {resultEntries.length > 0 &&
-              resultEntries.map(([key, text]) => (
-                <Card
-                  key={key}
-                  className="border-warm-gold/20 bg-white shadow-soft"
-                >
-                  <CardContent className="pt-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {RESULT_KEY_TO_LABEL[key] ?? key}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(text)}
-                        className="h-8 gap-1.5"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Copy
-                      </Button>
+              resultEntries.map(([key, value]) => {
+                const platformLabel = RESULT_KEY_TO_LABEL[key] ?? key;
+                if (isOptionsShape(value)) {
+                  return (
+                    <div key={key} className="space-y-4">
+                      <h3 className="font-serif text-lg font-semibold text-forest-green">
+                        {platformLabel}
+                      </h3>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {value.options.map((opt, idx) => (
+                          <Card
+                            key={`${key}-${idx}`}
+                            className="border-warm-gold/20 bg-white shadow-soft flex flex-col"
+                          >
+                            <CardContent className="pt-4 flex flex-col flex-1">
+                              <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-xs font-semibold text-forest-green uppercase tracking-wide">
+                                  {opt.style}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(opt.content)}
+                                  className="h-8 gap-1.5 shrink-0"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  Copy
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                {opt.intent}
+                              </p>
+                              <Textarea
+                                readOnly
+                                value={opt.content}
+                                className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0 flex-1"
+                              />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
-                    <Textarea
-                      readOnly
-                      value={text}
-                      className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
-                    />
-                  </CardContent>
-                </Card>
-              ))}
+                  );
+                }
+                const text = typeof value === "string" ? value : "";
+                return (
+                  <Card key={key} className="border-warm-gold/20 bg-white shadow-soft">
+                    <CardContent className="pt-4">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {platformLabel}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(text)}
+                          className="h-8 gap-1.5"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy
+                        </Button>
+                      </div>
+                      <Textarea
+                        readOnly
+                        value={text}
+                        className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })}
           </div>
         </div>
       </div>
