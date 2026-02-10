@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Artisan / Etsy theme */
+    --background: 40 20% 97%; /* #F7F5F2 warm ivory */
+    --foreground: 0 0% 17%; /* #2C2C2C soft charcoal */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 0 0% 17%;
+    --primary: 160 33% 28%; /* #2F5D50 deep forest green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 20% 94%;
+    --secondary-foreground: 0 0% 17%;
+    --muted: 40 15% 93%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 39 45% 61%; /* #C9A66B warm gold */
+    --accent-foreground: 0 0% 17%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 39 30% 85%;
+    --input: 39 20% 90%;
+    --ring: 39 45% 61%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+    --primary: 160 33% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 39 45% 55%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 39 45% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
