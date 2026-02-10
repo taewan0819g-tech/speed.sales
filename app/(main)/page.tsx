@@ -111,7 +111,9 @@ export default function Home() {
     setOrigin(row.origin ?? "");
     setKeyFeatures(row.key_features ?? "");
     setTone(row.tone ?? "Simple");
-    setPlatforms(Array.isArray(row.target_platforms) ? row.target_platforms : []);
+    setPlatforms(
+      (Array.isArray(row.target_platforms) ? row.target_platforms : []) as Platform[]
+    );
     setResult(
       row.generated_contents && typeof row.generated_contents === "object"
         ? row.generated_contents
