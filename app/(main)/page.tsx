@@ -266,10 +266,22 @@ export default function Home() {
     }
   };
 
-  const resultEntries = result ? Object.entries(result) : [];
+  const resultEntries = result
+    ? Object.entries(result).filter(([key]) => key in RESULT_KEY_TO_LABEL)
+    : [];
 
   const isOptionsShape = (v: PlatformResult): v is { options: ResultOption[] } =>
-    typeof v === "object" && v !== null && Array.isArray((v as { options?: unknown }).options);
+    typeof v === "object" &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Array.isArray((v as { options?: unknown }).options);
+
+  const getContentString = (opt: ResultOption): string => {
+    const c = opt?.content;
+    if (typeof c === "string") return c;
+    if (c == null) return "";
+    return String(c);
+  };
 
   return (
     <div className="flex min-h-full">
@@ -477,43 +489,51 @@ export default function Home() {
               resultEntries.map(([key, value]) => {
                 const platformLabel = RESULT_KEY_TO_LABEL[key] ?? key;
                 if (isOptionsShape(value)) {
+                  const options = value?.options ?? [];
                   return (
                     <div key={key} className="space-y-4">
                       <h3 className="font-serif text-lg font-semibold text-forest-green">
                         {platformLabel}
                       </h3>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {value.options.map((opt, idx) => (
-                          <Card
-                            key={`${key}-${idx}`}
-                            className="border-warm-gold/20 bg-white shadow-soft flex flex-col"
-                          >
-                            <CardContent className="pt-4 flex flex-col flex-1">
-                              <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-                                <span className="text-xs font-semibold text-forest-green uppercase tracking-wide">
-                                  {opt.style}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(opt.content)}
-                                  className="h-8 gap-1.5 shrink-0"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                  Copy
-                                </Button>
-                              </div>
-                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                {opt.intent}
-                              </p>
-                              <Textarea
-                                readOnly
-                                value={opt.content}
-                                className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0 flex-1"
-                              />
-                            </CardContent>
-                          </Card>
-                        ))}
+                        {options.map((opt: ResultOption, idx: number) => {
+                          const content = getContentString(opt);
+                          const styleLabel = typeof opt?.style === "string" ? opt.style : `Variation ${idx + 1}`;
+                          const intentLabel = typeof opt?.intent === "string" ? opt.intent : "";
+                          return (
+                            <Card
+                              key={`${key}-${idx}`}
+                              className="border-warm-gold/20 bg-white shadow-soft flex flex-col"
+                            >
+                              <CardContent className="pt-4 flex flex-col flex-1">
+                                <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="text-xs font-semibold text-forest-green uppercase tracking-wide">
+                                    {styleLabel}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(content)}
+                                    className="h-8 gap-1.5 shrink-0"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    Copy
+                                  </Button>
+                                </div>
+                                {intentLabel ? (
+                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                    {intentLabel}
+                                  </p>
+                                ) : null}
+                                <Textarea
+                                  readOnly
+                                  value={content}
+                                  className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0 flex-1"
+                                />
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
                     </div>
                   );
