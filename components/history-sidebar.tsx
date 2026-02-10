@@ -10,7 +10,7 @@ export type HistoryItem = {
 };
 
 type HistorySidebarProps = {
-  title?: string;
+  title?: React.ReactNode;
   items: HistoryItem[];
   selectedId: string | null;
   onNewChat: () => void;
@@ -76,7 +76,11 @@ export function HistorySidebar({
         `}
       >
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-warm-gold/20 px-3 font-serif">
-          <span className="font-semibold text-charcoal">{title}</span>
+          {typeof title === "string" ? (
+            <span className="font-semibold text-charcoal">{title}</span>
+          ) : (
+            title
+          )}
           <Button
             variant="ghost"
             size="sm"

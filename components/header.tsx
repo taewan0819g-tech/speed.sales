@@ -7,7 +7,7 @@ import { User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-export function Header({ user }: { user: SupabaseUser }) {
+export function Header({ user }: { user: SupabaseUser | null }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -24,20 +24,28 @@ export function Header({ user }: { user: SupabaseUser }) {
           Speed.Sales
         </Link>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {user.email ?? "User"}
-            </span>
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSignOut}
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          {user ? (
+            <>
+              <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  {user.email ?? "User"}
+                </span>
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSignOut}
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/login">Login</Link>
+            </Button>
+          )}
         </div>
       </div>
     </header>

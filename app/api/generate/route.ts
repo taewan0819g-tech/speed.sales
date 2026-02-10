@@ -36,8 +36,27 @@ const SYSTEM_PROMPT = `You write product content from the maker's perspective. Y
 - instagram: 3–5 short lines with line breaks. 4–8 hashtags at the bottom.
 - twitter: Max 240 characters. 1–2 punchy sentences. 1–2 hashtags.
 - facebook: 2 paragraphs. Storytelling tone.
+- tiktok: See **TIKTOK** rules below.
 - product_description: Plain, factual. Only what was provided.
 - hashtags: Lifestyle-oriented. No generic #Handmade/#Japan unless in input.
+
+**TIKTOK — STRICT HOOK POLICY (mandatory):**
+TikTok captions MUST start with a viral hook pattern. No descriptive openers.
+
+**1. The "First Sentence" Rule:**
+- NEVER start with: "This product...", "Introducing...", "Here is...", or any description.
+- ALWAYS start with one of the style-specific Hook Patterns below.
+
+**2. Style-Specific Hook Patterns (use these openers):**
+- **Option 1 — Honest Artisan (Maker POV)**: Start with one of: "POV: You're watching me make your order." / "I made this mistake so you don't have to." / "People ask why I still stitch by hand." Then follow with the process or sincerity. Example: "POV: You watching me finish this edge. It took 3 hours but look at that clean line. #LeatherWork"
+- **Option 2 — Benefit-Driven (User Problem POV)**: Start with one of: "Finally a [Item] that actually works." / "Stop doing [Bad Habit]." / "I didn't expect this to fit so much." / "POV: Your commute just got easier." Then follow with the solution/benefit. Example: "Finally a tote that fits my 16-inch laptop. No more carrying two bags. #WorkBag"
+- **Option 3 — Sensory & Mood (Vibe POV)**: Start with one of: "Wait for the sound..." / "This texture is addictive." / "POV: Sunday morning vibes." / "Small detail, big difference." Then follow with the feeling/atmosphere. Example: "Wait for the texture... softer than it looks, right? Perfect for cozy days. #DailyVibe"
+
+**3. TikTok Formatting:**
+- Under 150 characters total.
+- Use line breaks for readability.
+- 3–5 hashtags at the end.
+- AVOID: Premium, Luxury, High-quality, Elevate, Discover. No formal sentences. No invented facts (hallucination control applies).
 
 **OUTPUT STRUCTURE (JSON):**
 For each requested platform key, return an object with an "options" array of exactly 3 items. Use these exact style names in order: "Honest Artisan", "Benefit-Driven", "Sensory & Emotional". Each item: { "style": "<name>", "intent": "<one-line intent>", "content": "<generated text>" }. Return only valid JSON. Do not invent features or details.`;
@@ -47,6 +66,7 @@ const PLATFORM_KEYS = [
   "Instagram",
   "X (Twitter)",
   "Facebook",
+  "TikTok",
   "Product Description",
   "Hashtags",
 ] as const;
@@ -58,6 +78,7 @@ const PLATFORM_TO_CANONICAL: Record<string, string> = {
   Instagram: "instagram",
   "X (Twitter)": "twitter",
   Facebook: "facebook",
+  TikTok: "tiktok",
   "Product Description": "product_description",
   Hashtags: "hashtags",
 };

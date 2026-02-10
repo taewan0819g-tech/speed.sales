@@ -16,8 +16,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Loader2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Copy, Loader2, Lock, CircleHelp, X } from "lucide-react";
 import { HistorySidebar, type HistoryItem } from "@/components/history-sidebar";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const STORAGE_BUCKET = "product-images";
 
@@ -26,6 +28,7 @@ const PLATFORMS = [
   "Instagram",
   "X (Twitter)",
   "Facebook",
+  "TikTok",
   "Product Description",
   "Hashtags",
 ] as const;
@@ -35,6 +38,7 @@ const RESULT_KEY_TO_LABEL: Record<string, string> = {
   instagram: "Instagram",
   twitter: "X (Twitter)",
   facebook: "Facebook",
+  tiktok: "TikTok",
   product_description: "Product Description",
   hashtags: "Hashtags",
 };
@@ -61,9 +65,22 @@ type ProductRow = {
 };
 
 export default function Home() {
+  const router = useRouter();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const client = createClient();
+    client.auth.getUser().then(({ data: { user: u } }) => setUser(u ?? null));
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [productName, setProductName] = useState("");
   const [material, setMaterial] = useState("");
@@ -173,6 +190,10 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     if (!productName.trim()) {
       setError("Product name is required.");
       return;
@@ -286,7 +307,23 @@ export default function Home() {
   return (
     <div className="flex min-h-full">
       <HistorySidebar
-        title="Your Products"
+        title={
+          <div className="flex items-center gap-2 font-semibold text-charcoal">
+            <span>Your Products</span>
+            <div className="relative group">
+              <CircleHelp
+                className="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors"
+                aria-hidden
+              />
+              <span
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center"
+                role="tooltip"
+              >
+                We generate your brand story once you add several products.
+              </span>
+            </div>
+          </div>
+        }
         items={historyItems}
         selectedId={selectedProductId}
         onNewChat={resetForm}
@@ -468,6 +505,11 @@ export default function Home() {
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Generating...
+                    </>
+                  ) : !user ? (
+                    <>
+                      <Lock className="h-4 w-4" />
+                      Generate
                     </>
                   ) : (
                     "Generate"
