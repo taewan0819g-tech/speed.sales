@@ -74,7 +74,13 @@ function LoginForm() {
       </div>
       <Card className="w-full max-w-[400px] border-warm-gold/20 bg-white shadow-soft-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="font-serif text-xl text-forest-green">Speed.Sales</CardTitle>
+          <div className="flex justify-center">
+            <img
+              src="/logo.png"
+              alt="Speed.Sales"
+              className="h-9 w-auto"
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             {isSignUp ? "Create an account" : "Sign in to continue"}
           </p>

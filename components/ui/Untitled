@@ -1,0 +1,8 @@
+I moved `logo.png` into the `components` folder (same folder as header.tsx).
+Now, update `components/header.tsx` to use the **Static Import** method.
+
+**Requirements:**
+1. Import the image at the top: `import logoSrc from './logo.png';`
+2. Use it in the Image component: `src={logoSrc}`
+3. Remove `width` and `height` props (Static import handles them automatically).
+4. Keep `alt="Speed.Sales Logo"` and `priority`.

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { User, LogOut } from "lucide-react";
@@ -20,8 +21,15 @@ export function Header({ user }: { user: SupabaseUser | null }) {
   return (
     <header className="sticky top-0 z-10 border-b border-warm-gold/20 bg-white/95 backdrop-blur shadow-soft">
       <div className="container mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link href="/" className="font-serif font-semibold text-lg text-forest-green tracking-tight">
-          Speed.Sales
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logo.png"
+            alt="Speed.Sales Logo"
+            width={160}
+            height={45}
+            priority
+            className="object-contain"
+          />
         </Link>
         <div className="flex items-center gap-2">
           {user ? (
