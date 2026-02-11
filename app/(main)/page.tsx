@@ -1,29 +1,55 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ComponentType } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
-import { Copy, Loader2, Lock, CircleHelp, X } from "lucide-react";
+import {
+  Copy,
+  Loader2,
+  Lock,
+  CircleHelp,
+  X,
+  Instagram,
+  Twitter,
+  Facebook,
+  Video,
+  FileText,
+  Hash,
+  Sparkles,
+} from "lucide-react";
 import { HistorySidebar, type HistoryItem } from "@/components/history-sidebar";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const STORAGE_BUCKET = "product-images";
 
 const TONE_OPTIONS = ["Simple", "Warm", "Premium"] as const;
+const TONE_CARDS: {
+  value: (typeof TONE_OPTIONS)[number];
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: "Simple",
+    title: "Simple",
+    description: "Clear and straightforward copy",
+  },
+  {
+    value: "Warm",
+    title: "Warm",
+    description: "Friendly and approachable tone",
+  },
+  {
+    value: "Premium",
+    title: "Premium",
+    description: "Refined and elevated voice",
+  },
+];
 const PLATFORMS = [
   "Instagram",
   "X (Twitter)",
@@ -33,7 +59,18 @@ const PLATFORMS = [
   "Hashtags",
 ] as const;
 
-/** Map API result key (canonical) -> display label for result cards */
+const PLATFORM_ICONS: Record<
+  (typeof PLATFORMS)[number],
+  ComponentType<{ className?: string }>
+> = {
+  Instagram,
+  "X (Twitter)": Twitter,
+  Facebook,
+  TikTok: Video,
+  "Product Description": FileText,
+  Hashtags: Hash,
+};
+
 const RESULT_KEY_TO_LABEL: Record<string, string> = {
   instagram: "Instagram",
   twitter: "X (Twitter)",
@@ -43,9 +80,7 @@ const RESULT_KEY_TO_LABEL: Record<string, string> = {
   hashtags: "Hashtags",
 };
 
-/** One variation (style + intent + content) */
 export type ResultOption = { style: string; intent: string; content: string };
-/** Per-platform: either legacy string or new shape with 3 options */
 export type PlatformResult = string | { options: ResultOption[] };
 
 type Platform = (typeof PLATFORMS)[number];
@@ -148,21 +183,10 @@ export default function Home() {
     setOrigin(row.origin ?? "");
     setKeyFeatures(row.key_features ?? "");
     setTone(row.tone ?? "Simple");
-    setPlatforms(
-      (Array.isArray(row.target_platforms) ? row.target_platforms : []) as Platform[]
-    );
-    setResult(
-      row.generated_contents && typeof row.generated_contents === "object"
-        ? (row.generated_contents as Record<string, PlatformResult>)
-        : null
-    );
+    setPlatforms(Array.isArray(row.target_platforms) ? row.target_platforms : []);
+    setResult(row.generated_contents ?? null);
     setSelectedProductId(id);
     setError(null);
-    setImageFiles([]);
-    setImagePreviewUrls((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      return [];
-    });
   }, []);
 
   const resetForm = useCallback(() => {
@@ -175,24 +199,22 @@ export default function Home() {
     setTone("Simple");
     setPlatforms([]);
     setResult(null);
-    setSelectedProductId(null);
     setError(null);
+    setSelectedProductId(null);
     setImageFiles([]);
-    setImagePreviewUrls((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      return [];
-    });
-  }, []);
+    imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setImagePreviewUrls([]);
+  }, [imagePreviewUrls]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
-    const valid = files.filter((f) => f.type.startsWith("image/"));
-    setImageFiles((prev) => [...prev, ...valid]);
-    valid.forEach((f) => {
-      setImagePreviewUrls((prev) => [...prev, URL.createObjectURL(f)]);
+    const files = e.target.files;
+    if (!files?.length) return;
+    const list = Array.from(files);
+    setImageFiles((prev) => [...prev, ...list]);
+    list.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      setImagePreviewUrls((prev) => [...prev, url]);
     });
-    e.target.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -200,7 +222,8 @@ export default function Home() {
     setImagePreviewUrls((prev) => {
       const next = [...prev];
       URL.revokeObjectURL(next[index] ?? "");
-      return next.filter((_, i) => i !== index);
+      next.splice(index, 1);
+      return next;
     });
   };
 
@@ -209,7 +232,9 @@ export default function Home() {
       router.push("/login");
       return;
     }
-    if (!productName.trim()) {
+    setError(null);
+    const productNameTrimmed = productName.trim();
+    if (!productNameTrimmed) {
       setError("Product name is required.");
       return;
     }
@@ -217,30 +242,25 @@ export default function Home() {
       setError("Select at least one platform.");
       return;
     }
-    setError(null);
+
     setLoading(true);
-    setResult(null);
+    let imageUrlList: string[] = [];
 
     try {
-      let imageUrls: string[] = [];
       if (imageFiles.length > 0) {
         const client = createClient();
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
           const ext = file.name.split(".").pop() || "jpg";
-          const path = `${Date.now()}-${i}.${ext}`;
+          const path = `${user.id}/${Date.now()}-${i}.${ext}`;
           const { error: uploadError } = await client.storage
             .from(STORAGE_BUCKET)
             .upload(path, file, { upsert: true });
-          if (uploadError) {
-            setError(`Image upload failed: ${uploadError.message}`);
-            setLoading(false);
-            return;
-          }
+          if (uploadError) throw uploadError;
           const { data: urlData } = client.storage
             .from(STORAGE_BUCKET)
             .getPublicUrl(path);
-          imageUrls.push(urlData.publicUrl);
+          imageUrlList.push(urlData.publicUrl);
         }
       }
 
@@ -248,7 +268,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          productName: productName.trim(),
+          productName: productNameTrimmed,
           material: material.trim() || undefined,
           size: size.trim() || undefined,
           handmade,
@@ -256,15 +276,16 @@ export default function Home() {
           keyFeatures: keyFeatures.trim() || undefined,
           tone,
           platforms,
-          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+          imageUrls: imageUrlList,
         }),
       });
+
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Generation failed.");
-        setLoading(false);
+        setError(data?.error ?? "Something went wrong.");
         return;
       }
+
       const {
         productId,
         productName: name,
@@ -321,7 +342,6 @@ export default function Home() {
 
   return (
     <div className="flex min-h-full">
-      {/* First-time visitor welcome modal */}
       {welcomeModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
@@ -330,13 +350,13 @@ export default function Home() {
           aria-labelledby="welcome-modal-title"
         >
           <div
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-300"
+            className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={closeWelcomeModal}
-              className="absolute right-4 top-4 rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              className="absolute right-4 top-4 rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -368,11 +388,11 @@ export default function Home() {
             <span>Your Products</span>
             <div className="relative group">
               <CircleHelp
-                className="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors"
+                className="h-4 w-4 cursor-help text-gray-400 transition-colors hover:text-gray-600"
                 aria-hidden
               />
               <span
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center"
+                className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded bg-gray-800 p-2 text-center text-xs text-white shadow-lg opacity-0 transition-opacity pointer-events-none group-hover:opacity-100"
                 role="tooltip"
               >
                 We generate your brand story once you add several products.
@@ -389,280 +409,348 @@ export default function Home() {
         onMobileToggle={() => setSidebarMobileOpen((o) => !o)}
       />
 
-      {/* Main content: offset by sidebar on desktop; warm ivory bg */}
       <div className="min-h-full flex-1 bg-ivory lg:ml-[260px]">
-        <div className="mx-auto w-full max-w-[800px] px-4 py-8 pt-16 lg:pt-8">
-          {/* Welcoming prompt – left-aligned with form */}
-          <div className="mb-8 space-y-2">
-            <h2 className="font-serif text-xl md:text-2xl font-semibold text-charcoal">
-              Ready to share your masterpiece?
-            </h2>
-            <p className="font-sans text-sm text-charcoal/90 leading-relaxed">
-              Simply describe your product. We&apos;ll handle the marketing so you can stay focused on your craft.
-            </p>
-          </div>
+        <div className="mx-auto max-w-7xl px-4 py-8 pt-16 lg:pt-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="space-y-6 lg:col-span-5">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-charcoal md:text-2xl">
+                  Create content
+                </h2>
+                <p className="mt-1 text-sm text-charcoal/80">
+                  Describe your product. We&apos;ll generate copy for every
+                  channel.
+                </p>
+              </div>
 
-          {/* Centered input card – white, soft shadow (fine paper) */}
-          <Card className="border-warm-gold/20 bg-white shadow-soft-md">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="productName" className="text-charcoal font-medium">Product Name *</Label>
-                    <Input
-                      id="productName"
-                      placeholder="e.g. Ceramic Mug"
-                      value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tone</Label>
-                    <Select value={tone} onValueChange={setTone}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TONE_OPTIONS.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="productName"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Product name
+                </Label>
+                <Input
+                  id="productName"
+                  placeholder="e.g. Ceramic Mug"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  className="rounded-none border-0 border-b border-gray-200 bg-transparent px-0 shadow-none focus-visible:border-forest-green focus-visible:ring-0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Tone
+                </span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {TONE_CARDS.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTone(t.value)}
+                      className={`rounded-xl border-2 p-4 text-left transition-all hover:-translate-y-1 ${
+                        tone === t.value
+                          ? "border-forest-green bg-forest-green/10 text-forest-green"
+                          : "border-gray-200 bg-white text-charcoal hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="font-medium">{t.title}</span>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t.description}
+                      </p>
+                    </button>
+                  ))}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="material">Material</Label>
-                    <Input
-                      id="material"
-                      placeholder="e.g. Porcelain"
-                      value={material}
-                      onChange={(e) => setMaterial(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="size">Size</Label>
-                    <Input
-                      id="size"
-                      placeholder="e.g. 350ml"
-                      value={size}
-                      onChange={(e) => setSize(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
-                  <Label htmlFor="handmade" className="cursor-pointer flex-1">
-                    Handmade
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="material"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Material
                   </Label>
+                  <Input
+                    id="material"
+                    placeholder="e.g. Porcelain"
+                    value={material}
+                    onChange={(e) => setMaterial(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-gray-50/80 focus-visible:ring-forest-green"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="size"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Size
+                  </Label>
+                  <Input
+                    id="size"
+                    placeholder="e.g. 350ml"
+                    value={size}
+                    onChange={(e) => setSize(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-gray-50/80 focus-visible:ring-forest-green"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
                   <Switch
                     id="handmade"
                     checked={handmade}
                     onCheckedChange={setHandmade}
                   />
+                  <Label
+                    htmlFor="handmade"
+                    className="cursor-pointer text-sm font-normal"
+                  >
+                    Handmade
+                  </Label>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="origin">Origin</Label>
+                <div className="min-w-[140px] flex-1">
                   <Input
                     id="origin"
-                    placeholder="e.g. Made in Korea"
+                    placeholder="Origin (e.g. Made in Korea)"
                     value={origin}
                     onChange={(e) => setOrigin(e.target.value)}
+                    className="rounded-none border-0 border-b border-gray-200 bg-transparent px-0 shadow-none focus-visible:border-forest-green focus-visible:ring-0"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="keyFeatures" className="text-charcoal font-medium">Features</Label>
-                  <Textarea
-                    id="keyFeatures"
-                    placeholder="Enter 3–5 bullet points"
-                    value={keyFeatures}
-                    onChange={(e) => setKeyFeatures(e.target.value)}
-                    rows={3}
-                    className="resize-none border-warm-gold/30 focus-visible:ring-warm-gold"
-                  />
-                </div>
+              </div>
 
-                {/* Product Images (Optional) */}
-                <div className="space-y-2">
-                  <Label className="text-charcoal font-medium">Product Images (Optional)</Label>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className="cursor-pointer rounded-lg border border-warm-gold/40 bg-ivory px-4 py-2 text-sm font-medium text-forest-green hover:bg-forest-green/10 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={handleImageChange}
-                      />
-                      Choose images
-                    </label>
-                    {imagePreviewUrls.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {imagePreviewUrls.map((url, i) => (
-                          <div
-                            key={url}
-                            className="relative h-16 w-16 rounded-lg border border-warm-gold/30 overflow-hidden bg-muted"
-                          >
-                            <img
-                              src={url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(i)}
-                              className="absolute right-0.5 top-0.5 rounded-full bg-charcoal/70 p-0.5 text-white hover:bg-charcoal"
-                              aria-label="Remove image"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {imageFiles.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {imageFiles.length} image(s) selected. They will be uploaded when you Generate.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground font-medium">Platforms</Label>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {PLATFORMS.map((p) => (
-                      <div key={p} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={p}
-                          checked={platforms.includes(p)}
-                          onCheckedChange={() => togglePlatform(p)}
-                        />
-                        <Label
-                          htmlFor={p}
-                          className="cursor-pointer text-sm font-normal"
-                        >
-                          {p}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
-                <Button
-                  className="w-full sm:w-auto bg-forest-green hover:bg-forest-green/90 text-white focus-visible:ring-warm-gold"
-                  onClick={handleGenerate}
-                  disabled={loading}
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="keyFeatures"
+                  className="text-xs font-medium text-muted-foreground"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : !user ? (
-                    <>
-                      <Lock className="h-4 w-4" />
-                      Generate
-                    </>
-                  ) : (
-                    "Generate"
-                  )}
-                </Button>
+                  Features
+                </Label>
+                <Textarea
+                  id="keyFeatures"
+                  placeholder="3–5 bullet points or short description"
+                  value={keyFeatures}
+                  onChange={(e) => setKeyFeatures(e.target.value)}
+                  rows={3}
+                  className="resize-none rounded-lg border border-gray-200 bg-gray-50/80 focus-visible:ring-forest-green"
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Output stream below – chat-style blocks */}
-          <div className="mt-8 space-y-6">
-            {loading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Generating content...</span>
-              </div>
-            )}
-            {resultEntries.length > 0 &&
-              resultEntries.map(([key, value]) => {
-                const platformLabel = RESULT_KEY_TO_LABEL[key] ?? key;
-                if (isOptionsShape(value)) {
-                  const options = value?.options ?? [];
-                  return (
-                    <div key={key} className="space-y-4">
-                      <h3 className="font-serif text-lg font-semibold text-forest-green">
-                        {platformLabel}
-                      </h3>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {options.map((opt: ResultOption, idx: number) => {
-                          const content = getContentString(opt);
-                          const styleLabel = typeof opt?.style === "string" ? opt.style : `Variation ${idx + 1}`;
-                          const intentLabel = typeof opt?.intent === "string" ? opt.intent : "";
-                          return (
-                            <Card
-                              key={`${key}-${idx}`}
-                              className="border-warm-gold/20 bg-white shadow-soft flex flex-col"
-                            >
-                              <CardContent className="pt-4 flex flex-col flex-1">
-                                <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-                                  <span className="text-xs font-semibold text-forest-green uppercase tracking-wide">
-                                    {styleLabel}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => copyToClipboard(content)}
-                                    className="h-8 gap-1.5 shrink-0"
-                                  >
-                                    <Copy className="h-3.5 w-3.5" />
-                                    Copy
-                                  </Button>
-                                </div>
-                                {intentLabel ? (
-                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                    {intentLabel}
-                                  </p>
-                                ) : null}
-                                <Textarea
-                                  readOnly
-                                  value={content}
-                                  className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0 flex-1"
-                                />
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                }
-                const text = typeof value === "string" ? value : "";
-                return (
-                  <Card key={key} className="border-warm-gold/20 bg-white shadow-soft">
-                    <CardContent className="pt-4">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {platformLabel}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(text)}
-                          className="h-8 gap-1.5"
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Product images (optional)
+                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-forest-green transition-colors hover:bg-forest-green/10">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                    Choose images
+                  </label>
+                  {imagePreviewUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {imagePreviewUrls.map((url, i) => (
+                        <div
+                          key={url}
+                          className="relative h-14 w-14 overflow-hidden rounded-lg border border-gray-200 bg-muted"
                         >
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy
-                        </Button>
-                      </div>
-                      <Textarea
-                        readOnly
-                        value={text}
-                        className="min-h-[120px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
-                      />
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                          <img
+                            src={url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(i)}
+                            className="absolute right-0.5 top-0.5 rounded-full bg-charcoal/70 p-0.5 text-white hover:bg-charcoal"
+                            aria-label="Remove image"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {imageFiles.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {imageFiles.length} image(s) will be uploaded when you
+                    generate.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Platforms
+                </span>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {PLATFORMS.map((p) => {
+                    const Icon = PLATFORM_ICONS[p];
+                    const selected = platforms.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePlatform(p)}
+                        className={`flex items-center gap-2 rounded-xl border-2 p-3 text-left transition-all ${
+                          selected
+                            ? "border-forest-green bg-forest-green/10 text-forest-green"
+                            : "border-gray-200 bg-white text-charcoal hover:border-gray-300"
+                        }`}
+                      >
+                        {Icon && <Icon className="h-5 w-5 shrink-0" />}
+                        <span className="truncate text-sm font-medium">{p}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
+
+              <Button
+                className="w-full bg-gradient-to-r from-forest-green to-emerald-700 py-6 text-base font-medium text-white shadow-lg hover:opacity-95 hover:shadow-xl"
+                onClick={handleGenerate}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Generating...
+                  </>
+                ) : !user ? (
+                  <>
+                    <Lock className="h-5 w-5" />
+                    Generate
+                  </>
+                ) : (
+                  "Generate"
+                )}
+              </Button>
+            </div>
+
+            <div className="lg:col-span-7">
+              <div className="sticky top-24 min-h-[360px] rounded-2xl border border-gray-200 bg-gray-50/80 p-6 shadow-sm lg:min-h-[480px]">
+                {loading && (
+                  <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                    <span className="text-sm">Generating content...</span>
+                  </div>
+                )}
+                {!loading && resultEntries.length === 0 && (
+                  <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 text-center">
+                    <div className="rounded-full bg-gray-200/80 p-4">
+                      <Sparkles className="h-10 w-10 text-gray-500" />
+                    </div>
+                    <p className="font-medium text-charcoal">
+                      Ready to create magic
+                    </p>
+                    <p className="max-w-xs text-sm text-muted-foreground">
+                      Fill in your product details and pick platforms. Your
+                      copy will appear here.
+                    </p>
+                  </div>
+                )}
+                {!loading && resultEntries.length > 0 && (
+                  <div className="space-y-6">
+                    {resultEntries.map(([key, value]) => {
+                      const platformLabel = RESULT_KEY_TO_LABEL[key] ?? key;
+                      if (isOptionsShape(value)) {
+                        const options = value?.options ?? [];
+                        return (
+                          <div key={key} className="space-y-3">
+                            <h3 className="text-sm font-semibold text-forest-green">
+                              {platformLabel}
+                            </h3>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                              {options.map((opt: ResultOption, idx: number) => {
+                                const content = getContentString(opt);
+                                const styleLabel =
+                                  typeof opt?.style === "string"
+                                    ? opt.style
+                                    : `Variation ${idx + 1}`;
+                                const intentLabel =
+                                  typeof opt?.intent === "string"
+                                    ? opt.intent
+                                    : "";
+                                return (
+                                  <Card
+                                    key={`${key}-${idx}`}
+                                    className="border border-gray-200 bg-white shadow-sm"
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-forest-green">
+                                          {styleLabel}
+                                        </span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            copyToClipboard(content)
+                                          }
+                                          className="h-7 gap-1 text-xs"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                          Copy
+                                        </Button>
+                                      </div>
+                                      {intentLabel ? (
+                                        <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">
+                                          {intentLabel}
+                                        </p>
+                                      ) : null}
+                                      <p className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-charcoal">
+                                        {content}
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      const text =
+                        typeof value === "string" ? value : "";
+                      return (
+                        <div key={key} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {platformLabel}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(text)}
+                              className="h-7 gap-1 text-xs"
+                            >
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </Button>
+                          </div>
+                          <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <p className="whitespace-pre-wrap font-mono text-sm text-charcoal">
+                              {text}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
