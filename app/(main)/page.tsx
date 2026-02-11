@@ -70,6 +70,21 @@ export default function Home() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("hasVisited") == null) {
+      setWelcomeModalOpen(true);
+    }
+  }, []);
+
+  const closeWelcomeModal = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("hasVisited", "true");
+    }
+    setWelcomeModalOpen(false);
+  };
 
   useEffect(() => {
     const client = createClient();
@@ -306,6 +321,47 @@ export default function Home() {
 
   return (
     <div className="flex min-h-full">
+      {/* First-time visitor welcome modal */}
+      {welcomeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          aria-modal="true"
+          role="dialog"
+          aria-labelledby="welcome-modal-title"
+        >
+          <div
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeWelcomeModal}
+              className="absolute right-4 top-4 rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2
+              id="welcome-modal-title"
+              className="pr-8 text-xl font-bold text-charcoal"
+            >
+              Welcome to Speed.Sales
+            </h2>
+            <p className="mt-3 leading-relaxed text-gray-600">
+              Built through extensive learning, we generate optimized,
+              platform-tailored content for every channel — Instagram, X,
+              Facebook, and TikTok.
+            </p>
+            <Button
+              onClick={closeWelcomeModal}
+              className="mt-6 w-full bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Get Started
+            </Button>
+          </div>
+        </div>
+      )}
+
       <HistorySidebar
         title={
           <div className="flex items-center gap-2 font-semibold text-charcoal">
