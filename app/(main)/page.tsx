@@ -22,6 +22,7 @@ import {
   FileText,
   Hash,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { HistorySidebar, type HistoryItem } from "@/components/history-sidebar";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -70,6 +71,9 @@ const PLATFORM_ICONS: Record<
   "Product Description": FileText,
   Hashtags: Hash,
 };
+
+const LANGUAGE_OPTIONS = ["KO", "EN", "JP", "CN"] as const;
+type Language = (typeof LANGUAGE_OPTIONS)[number];
 
 const RESULT_KEY_TO_LABEL: Record<string, string> = {
   instagram: "Instagram",
@@ -140,6 +144,7 @@ export default function Home() {
   const [keyFeatures, setKeyFeatures] = useState("");
   const [tone, setTone] = useState<string>("Simple");
   const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [language, setLanguage] = useState<Language>("KO");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, PlatformResult> | null>(null);
@@ -278,6 +283,7 @@ export default function Home() {
           keyFeatures: keyFeatures.trim() || undefined,
           tone,
           platforms,
+          language,
           imageUrls: imageUrlList,
         }),
       });
@@ -610,6 +616,35 @@ export default function Home() {
                       >
                         {Icon && <Icon className="h-5 w-5 shrink-0" />}
                         <span className="truncate text-sm font-medium">{p}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Target Market Language
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 bg-gray-50/80 p-1">
+                  {LANGUAGE_OPTIONS.map((lang) => {
+                    const isSelected = language === lang;
+                    const label = lang === "KO" ? "KO (Default)" : lang;
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setLanguage(lang)}
+                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "bg-forest-green text-white shadow-sm"
+                            : "text-charcoal hover:bg-gray-200/80"
+                        }`}
+                      >
+                        {label}
                       </button>
                     );
                   })}
