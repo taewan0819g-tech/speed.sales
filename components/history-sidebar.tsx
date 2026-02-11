@@ -63,32 +63,35 @@ export function HistorySidebar({
         />
       )}
 
-      {/* Sidebar: white/cream, artisan style, right border warm gold */}
+      {/* Sidebar: distinct workspace panel (soft gray theme) */}
       <aside
         className={`
           fixed left-0 top-14 z-40 flex w-[260px] flex-col
-          h-[calc(100vh-3.5rem)] bg-white
-          border-r border-warm-gold/30
-          shadow-soft
+          min-h-[calc(100vh-3.5rem)] h-[calc(100vh-3.5rem)] bg-gray-50/80
+          border-r border-gray-200 backdrop-blur-xl
           transition-transform duration-200 ease-out
           lg:translate-x-0
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-warm-gold/20 px-3 font-serif">
-          {typeof title === "string" ? (
-            <span className="font-semibold text-charcoal">{title}</span>
-          ) : (
-            title
-          )}
+        <div className="shrink-0 border-b border-gray-200 px-3 pt-4 pb-4">
+          <div className="mb-3">
+            {typeof title === "string" ? (
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {title}
+              </span>
+            ) : (
+              title
+            )}
+          </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
               onNewChat();
               onMobileClose?.();
             }}
-            className="gap-1.5 text-muted-foreground hover:bg-forest-green/10 hover:text-forest-green"
+            className="w-full justify-center gap-1.5 rounded-xl border-gray-200 bg-white py-2.5 font-medium text-gray-700 shadow-sm transition-all hover:shadow-md"
           >
             <Plus className="h-4 w-4" />
             New Chat
@@ -96,11 +99,11 @@ export function HistorySidebar({
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {items.length === 0 ? (
-            <p className="px-2 py-4 text-sm text-muted-foreground">
+            <p className="px-2 py-4 text-sm text-gray-500">
               No products yet. Generate one to see it here.
             </p>
           ) : (
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {items.map((item) => (
                 <li key={item.id}>
                   <button
@@ -110,16 +113,16 @@ export function HistorySidebar({
                       onMobileClose?.();
                     }}
                     className={`
-                      w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors
+                      w-full rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200
                       ${selectedId === item.id
-                        ? "bg-forest-green/15 text-forest-green border border-warm-gold/40"
-                        : "text-muted-foreground hover:bg-muted hover:text-charcoal border border-transparent"}
+                        ? "bg-white font-medium text-gray-900 shadow-sm ring-1 ring-black/5"
+                        : "bg-transparent text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"}
                     `}
                   >
-                    <span className="block truncate font-medium">
+                    <span className="block truncate">
                       {item.product_name}
                     </span>
-                    <span className="block truncate text-xs opacity-80">
+                    <span className="block truncate text-xs opacity-70">
                       {formatHistoryDate(item.created_at)}
                     </span>
                   </button>
