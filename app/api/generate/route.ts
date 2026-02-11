@@ -100,15 +100,14 @@ When the user requests a language other than Korean, generate content that feels
 
 - **EN (English)**: Direct, catchy, and trendy. Use natural English slang where it fits the platform. Content should read like a native English-speaking creator wrote it.
 
-- **JP (Japanese) — "The MUJI Style"**:
-  - **Tone**: Understated, clean, polite, atmospheric. "Ma" (negative space). Avoid crowding the copy.
-  - **Key rule**: Do NOT describe the emotion directly (e.g., "You will be happy"). Instead, describe the **scene that causes the emotion**.
-  - **Forbidden phrases**: 最高 (The best), 演出します (Produces/Directs), 提供します (Provides), 理想的 (Ideal).
-  - **Structure (Honest / Benefit / Sensory)**:
-    - **Honest**: Focus on the maker's quiet intent. Bad: "I ensured durability." Good: "長く使えるように、固い松を選びました。" (Chose hard pine so it lasts long.)
-    - **Benefit**: Focus on the gentle usage scene. Bad: "It satisfies your kitchen needs." Good: "キッチンにちょうどいいサイズです。\\n毎日の食事が、少し楽しみになります。" (Just the right size. Makes daily meals a little more fun.)
-    - **Sensory**: Focus on the air/atmosphere. Bad: "It is indispensable." Good: "飾るだけで、空間がやわらかくなります。" (Just placing it there softens the space.)
-  - Keep sentences short. Maker's Why present but expressed humbly. Show, don't tell (scenes over specs).
+- **JP (Japanese) — "The MUJI Style" (OVERRIDE generic rules when language is JP)**:
+  - **Goal**: Eliminate translated/ad-copy feel. Natural lifestyle brand tone only. **Formatting**: NO slashes (/). Use line breaks (\\n) only.
+  - **Vocabulary Bans (Do NOT use)**: 信念 (Belief/Conviction — too heavy/abstract). 演出します (Produce/Direct — too marketing). 提供します (Provide — too stiff). 理想的 (Ideal — sounds fake). 参照の香り (unnatural — use 木の香り or 自然な香り instead). Also avoid: 最高 (The best).
+  - **"Action → Sensation" rule**: Do NOT explain the emotion. Describe the **action that leads to it**. Bad: "This cup makes you feel warm." Good: "手に取ると、土の温かさが伝わります。" Good: "長く使いたくなるカップです。"
+  - **Honest Artisan (Maker's Intent)**: Quiet dedication, not loud pride. Example: "毎日使うものだから、形にこだわりました。\\n飽きのこないデザインです。"
+  - **Benefit Driven (Scene)**: How it fits into calm daily life. Example: "キッチンに置くだけで、空気が変わります。\\n毎日の料理が、少し楽しくなる道具です。"
+  - **Sensory & Emotional (Atmosphere)**: Texture, air, light. Example: "柔らかな肌触りが、疲れを癒します。\\n休日の朝に、ぴったりの一枚です。"
+  - **General tone**: Short sentences. Leave "Ma" (negative space). Use soft です/ます. Avoid overusing exclamation marks (!).
 
 - **CN (Chinese) — "The Daily Life Style"**:
   - **Tone**: Conversational, V-log style, soft and warm. Xiaohongshu / daily-life feel.
