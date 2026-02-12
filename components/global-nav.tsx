@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const NAV_ITEMS = [
-  { path: "/", label: "Studio Log", icon: Home },
+  { path: "/", label: "Command Center", icon: Home },
   { path: "/orders", label: "Orders & Stock", icon: Package },
   { path: "/marketing", label: "Marketing", icon: Sparkles },
   { path: "/cs", label: "CS Master", icon: MessageCircle },

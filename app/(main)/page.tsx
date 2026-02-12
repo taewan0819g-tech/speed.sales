@@ -50,7 +50,7 @@ export default function StudioLogPage() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 401) {
-          setError("Please sign in to use Studio Log.");
+          setError("Please sign in to use Command Center.");
           return;
         }
         setError(data?.error ?? "Something went wrong.");
@@ -75,46 +75,51 @@ export default function StudioLogPage() {
 
   return (
     <div className="min-h-full bg-ivory">
-      <div className="mx-auto max-w-2xl px-4 py-8 lg:py-12">
-        <h1 className="font-serif text-2xl font-bold text-[#2F5D50] md:text-3xl">
-          Studio Log
-        </h1>
-        <p className="mt-2 font-sans text-sm text-gray-600">
-          Write what happened today. Orders, expenses, and stock updates are
-          parsed automatically.
-        </p>
+      <div className="mx-auto max-w-5xl px-4 py-8 lg:py-12">
+        {/* Command Center: primary action area */}
+        <div className="rounded-2xl border border-[#2F6652]/20 bg-white p-8 shadow-xl sm:p-10">
+          <h1 className="font-serif text-2xl font-bold text-[#2F5D50] md:text-3xl">
+            Command Center
+          </h1>
+          <p className="mt-2 font-sans text-sm font-bold text-gray-600">
+            Just say it naturally. I track orders, inventory, expenses, and
+            organize your CS inbox automatically. (Product codes like MUG-001 are
+            optional, but recommended to avoid any confusion!)
+          </p>
 
-        <form onSubmit={handleSubmit} className="mt-8">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Example: Sold 2 mugs on Insta to Kim today. / Bought clay for 50,000 won."
-            className="min-h-[120px] resize-none rounded-xl border-gray-200 bg-white font-sans text-gray-700 placeholder:text-gray-400"
-            disabled={loading}
-          />
-          <Button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="mt-3 w-full rounded-xl bg-[#2F5D50] font-medium text-white hover:bg-[#2F5D50]/90 sm:w-auto sm:min-w-[140px]"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              "Log"
-            )}
-          </Button>
-        </form>
+          <form onSubmit={handleSubmit} className="mt-8">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ex: Sold 2 Mugs (MUG-001) to Kim... or 'James wants a refund for the Pink Pants (PNT-042) because of loose stitching...'"
+              className="min-h-[120px] resize-none rounded-xl border-gray-200 bg-white font-sans text-gray-700 placeholder:text-gray-400 focus:border-[#2F6652] focus:outline-none focus:ring-2 focus:ring-[#2F6652]/10"
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="mt-4 w-full rounded-xl bg-[#2F6652] px-6 py-2.5 font-semibold text-white shadow-md hover:bg-[#2F5D50]/90 sm:w-auto sm:min-w-[160px]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                "Log"
+              )}
+            </Button>
+          </form>
 
-        {error && (
-          <p className="mt-4 text-sm text-red-600">{error}</p>
-        )}
+          {error && (
+            <p className="mt-4 text-sm text-red-600">{error}</p>
+          )}
+        </div>
 
-        <div className="mt-10 space-y-4">
+        {/* Activity History: passive history, narrower and lighter */}
+        <div className="mx-auto mt-10 max-w-3xl space-y-4">
           <h2 className="font-serif text-lg font-semibold text-[#2F5D50]">
-            Recent logs
+            Activity History
           </h2>
           {logs.length === 0 ? (
             <p className="font-sans text-sm text-gray-500">
