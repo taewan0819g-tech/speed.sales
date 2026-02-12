@@ -66,10 +66,14 @@ function LoginForm() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-ivory p-4 gap-10">
       <div className="text-center space-y-4 max-w-md">
         <h1 className="font-serif text-2xl md:text-3xl font-bold text-[#2F5D50] leading-tight">
-          Focus on Your Craft. We&apos;ll Handle the Story.
+          Focus on making.
+          <br />
+          We handle the rest.
         </h1>
         <p className="text-sm font-sans text-[#2C2C2C] opacity-70 leading-relaxed">
-          Don&apos;t let social media become a burden. Spend more time creating and less time writing. We transform your passion into professional content instantly.
+          Inventory, orders, customer support, and marketing —
+          <br />
+          all in one place.
         </p>
       </div>
       <Card className="w-full max-w-[400px] border-warm-gold/20 bg-white shadow-soft-md">

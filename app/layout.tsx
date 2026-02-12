@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Speed.Sales – Global Seller Content Engine",
-  description: "Generate platform-ready content for your products.",
+  title: "Speed.Sales – AI-powered operating system for makers",
+  description: "Inventory, orders, customer support, and marketing — all in one place.",
 };
 
 export default function RootLayout({

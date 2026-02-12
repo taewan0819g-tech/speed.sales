@@ -1,19 +1,18 @@
 export function PhilosophySection() {
   const pillars = [
     {
-      title: "Artisan-First",
-      description:
-        "Dedicate your energy to making, not marketing.",
+      title: "Focus on Making",
+      description: "We handle the rest of the business.",
     },
     {
-      title: "Zero Burden",
+      title: "One Workspace",
       description:
-        "Generate multi-platform posts in under 30 seconds.",
+        "Manage orders, inventory, and customers in one place.",
     },
     {
-      title: "Professional Voice",
+      title: "Smarter Operations",
       description:
-        "Trustworthy storytelling that reflects your brand's quality.",
+        "Let AI handle repetitive tasks automatically.",
     },
   ];
 
