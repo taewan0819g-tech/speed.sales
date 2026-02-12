@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Package,
+  ClipboardList,
   Sparkles,
   MessageCircle,
   TrendingUp,
@@ -20,6 +21,7 @@ import { useState } from "react";
 const NAV_ITEMS = [
   { path: "/", label: "Command Center", icon: Home },
   { path: "/orders", label: "Orders & Stock", icon: Package },
+  { path: "/operations-log", label: "Operations Log", icon: ClipboardList },
   { path: "/marketing", label: "Marketing", icon: Sparkles },
   { path: "/cs", label: "CS Master", icon: MessageCircle },
   { path: "/finance", label: "Insights", icon: TrendingUp },

@@ -4,7 +4,7 @@ import { createApiClient } from "@/lib/supabase/api";
 
 const SYSTEM_PROMPT = `You are a helpful Artisan Assistant. You can READ and WRITE the database. The user writes free-form notes about their artisan business (inventory, sales, expenses, CS).
 
-**Read (answer questions):** If the user asks about stock levels (e.g. "How much stock for X?", "What's low?"), use check_inventory. If they ask about pending CS or customer inquiries, use check_cs_status. When the user asks about "unresolved", "not finished", "active", "ongoing", "remaining", or "unfinished" CS inquiries, use check_cs_status with status_filter='active' (counts Open + In Progress + Waiting). Only use a specific status (e.g. 'in_progress', 'waiting') when they explicitly ask for that one. You can call multiple tools when they ask two things at once (e.g. "Check stock AND pending CS").
+**Read (answer questions):** If the user asks about stock levels (e.g. "How much stock for X?", "What's low?"), use check_inventory. If they ask about pending CS or customer inquiries, use check_cs_status. When the user mentions a specific product (e.g. "CS for Shadow jacket"), pass product_name so only inquiries for that product are returned. When the user asks about "unresolved", "not finished", "active", "ongoing", "remaining", or "unfinished" CS inquiries, use check_cs_status with status_filter='active'. Only use a specific status when they explicitly ask for that one. You can call multiple tools when they ask two things at once.
 
 **Inventory & sales:**
 - When the user says "register", "new item", "added product", or similar → use manage_inventory with action='register'.
@@ -14,6 +14,8 @@ const SYSTEM_PROMPT = `You are a helpful Artisan Assistant. You can READ and WRI
 **manage_inventory:** Use action 'register' | 'sell' | 'update'. Provide product_name and quantity. For action='sell', also pass customer_name if the user mentions a customer (otherwise we use 'Unknown Customer'), and channel (Instagram/Naver/Offline) if mentioned. Prefer unique_id when the user gives a code/SKU/ID.
 
 **Expenses:** When they mention spending money, use log_expense (description, amount in KRW, category: material/shipping/marketing/etc).
+
+**Customer vs Operations:** External customer issues (refunds, complaints, questions) go to **CS Master** via log_cs_inquiry. Internal tasks, production requests, partner requests, and business notes go to the **Operations Log** via log_operation (e.g. "Record a request from E-mart for more mugs", "Note: Need to check fabric tomorrow"). If the user sees a schema or cache error when saving an operation, suggest they try again in a few seconds—Supabase can take a moment to propagate schema changes.
 
 **Customer service:** If the user mentions a customer asking a question, complaining, or requesting a refund, use log_cs_inquiry to record it. Set status to 'resolved' only if the user says they already replied (e.g. "I replied").`;
 
@@ -92,12 +94,28 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "log_operation",
+      description: "Record an internal operations note, production request, or business reminder. Use for: partner/retailer requests (e.g. E-mart wants more mugs), internal to-dos (e.g. check fabric tomorrow), production notes. Do NOT use for customer complaints or refunds—those go to log_cs_inquiry.",
+      parameters: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "The note or request text" },
+          kind: { type: "string", enum: ["note", "request", "reminder"], description: "note = general note; request = external/partner request; reminder = to-do or follow-up" },
+        },
+        required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "check_cs_status",
-      description: "Read CS inquiry counts and latest. Use when the user asks about pending/active/unresolved CS, customer inquiries, or how many tickets. Use status_filter='active' for unfinished/ongoing/remaining (counts Open + In Progress + Waiting). Use a specific status only when the user asks for that status (e.g. 'Waiting' or 'In Progress').",
+      description: "Read CS inquiry counts and latest. Use when the user asks about pending/active/unresolved CS, customer inquiries, or how many tickets. If the user mentions a specific product (e.g. 'Shadow jacket'), pass product_name to filter inquiries for that product only. Use status_filter='active' for unfinished/ongoing/remaining (counts Open + In Progress + Waiting). Use a specific status only when the user asks for that status (e.g. 'Waiting' or 'In Progress').",
       parameters: {
         type: "object",
         properties: {
           status_filter: { type: "string", description: "Use 'active' for all unresolved (Open + In Progress + Waiting). Use 'open', 'in_progress', 'waiting', 'resolved', or 'closed' for a single status. Default: 'active'." },
+          product_name: { type: "string", description: "Optional. When the user asks about CS for a specific product (e.g. 'Shadow jacket'), pass the product name to filter results." },
         },
         required: [],
       },
@@ -367,6 +385,29 @@ export async function POST(request: NextRequest) {
               result = `📝 CS Ticket Created: ${customer_name} - ${status}. Check CS Master.`;
             }
           }
+        } else if (name === "log_operation") {
+          const content = String(args.content ?? "").trim();
+          const kindVal = ["note", "request", "reminder"].includes(String(args.kind)) ? String(args.kind) : "note";
+          if (!content) {
+            result = "Error: content is required for operations log.";
+          } else {
+            const payload = { user_id: user.id, content, kind: kindVal };
+            let { error: insertError } = await supabase.from("operations_logs").insert(payload);
+            if (insertError) {
+              const isSchemaCacheError = /schema|cache|column|kind|relation/i.test(insertError.message);
+              if (isSchemaCacheError) {
+                await new Promise((r) => setTimeout(r, 2000));
+                const retry = await supabase.from("operations_logs").insert(payload);
+                insertError = retry.error;
+              }
+            }
+            if (insertError) {
+              console.error("log_operation insert error:", insertError);
+              result = `Error: Could not record operation. ${insertError.message}${/schema|cache/i.test(insertError.message) ? " Try again in a few seconds." : ""}`;
+            } else {
+              result = `📄 Operation logged (${kindVal}). Check Operations Log.`;
+            }
+          }
         } else if (name === "check_inventory") {
           const product_name = args.product_name != null ? String(args.product_name).trim() : "";
           const isAllOrEmpty = !product_name || product_name.toLowerCase() === "all";
@@ -398,40 +439,46 @@ export async function POST(request: NextRequest) {
           }
         } else if (name === "check_cs_status") {
           const status_filter = args.status_filter != null ? String(args.status_filter).trim().toLowerCase() : "active";
+          const productNameFilter = args.product_name != null ? String(args.product_name).trim() : "";
           const isActive = status_filter === "active" || !status_filter;
           const validSingle = ["open", "in_progress", "waiting", "resolved", "closed"];
           const singleStatus = validSingle.includes(status_filter) ? status_filter : null;
 
           if (isActive) {
-            const base = supabase.from("cs_inquiries").select("status, customer_name, content").eq("user_id", user.id).in("status", ["open", "in_progress", "waiting"]);
+            let base = supabase.from("cs_inquiries").select("status, customer_name, content").eq("user_id", user.id).in("status", ["open", "in_progress", "waiting"]);
+            if (productNameFilter) {
+              const term = productNameFilter.replace(/'/g, "''");
+              base = base.or(`product_name.ilike.%${term}%,content.ilike.%${term}%`);
+            }
             const { data: rows } = await base.order("created_at", { ascending: false });
             const open = (rows ?? []).filter((r) => r.status === "open").length;
             const inProgress = (rows ?? []).filter((r) => r.status === "in_progress").length;
             const waiting = (rows ?? []).filter((r) => r.status === "waiting").length;
             const total = open + inProgress + waiting;
             const latest = rows?.[0];
+            const productNote = productNameFilter ? ` (product: ${productNameFilter})` : "";
             if (total === 0) {
-              result = "📋 Found 0 active inquiries: 0 Open, 0 In Progress, 0 Waiting.";
+              result = `📋 Found 0 active inquiries${productNote}: 0 Open, 0 In Progress, 0 Waiting.`;
             } else {
-              const summary = `Found ${total} active inquiries: ${open} Open, ${inProgress} In Progress, ${waiting} Waiting.`;
+              const summary = `Found ${total} active inquiries${productNote}: ${open} Open, ${inProgress} In Progress, ${waiting} Waiting.`;
               result = latest ? `📋 ${summary} Latest: ${latest.customer_name} - ${latest.content}` : `📋 ${summary}`;
             }
           } else if (singleStatus) {
-            const { data: inquiries, count: total } = await supabase
-              .from("cs_inquiries")
-              .select("customer_name, content", { count: "exact" })
-              .eq("user_id", user.id)
-              .eq("status", singleStatus)
-              .order("created_at", { ascending: false })
-              .limit(1);
+            let q = supabase.from("cs_inquiries").select("customer_name, content", { count: "exact" }).eq("user_id", user.id).eq("status", singleStatus);
+            if (productNameFilter) {
+              const term = productNameFilter.replace(/'/g, "''");
+              q = q.or(`product_name.ilike.%${term}%,content.ilike.%${term}%`);
+            }
+            const { data: inquiries, count: total } = await q.order("created_at", { ascending: false }).limit(1);
             const latest = inquiries?.[0];
             const totalCount = total ?? 0;
+            const productNote = productNameFilter ? ` for ${productNameFilter}` : "";
             if (totalCount === 0) {
-              result = `📋 You have 0 ${singleStatus} inquiries.`;
+              result = `📋 You have 0 ${singleStatus} inquiries${productNote}.`;
             } else if (latest) {
-              result = `📋 You have ${totalCount} ${singleStatus} inquiries. Latest: ${latest.customer_name} - ${latest.content}`;
+              result = `📋 You have ${totalCount} ${singleStatus} inquiries${productNote}. Latest: ${latest.customer_name} - ${latest.content}`;
             } else {
-              result = `📋 You have ${totalCount} ${singleStatus} inquiries.`;
+              result = `📋 You have ${totalCount} ${singleStatus} inquiries${productNote}.`;
             }
           } else {
             result = "📋 Use status_filter 'active' or one of: open, in_progress, waiting, resolved, closed.";
@@ -449,7 +496,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (toolResults.length === 1 && !finalMessage) {
-        finalMessage = toolResults[0].startsWith("✅") || toolResults[0].startsWith("📉") || toolResults[0].startsWith("📝") || toolResults[0].startsWith("📋") ? toolResults[0] : "✅ " + toolResults[0];
+        finalMessage = toolResults[0].startsWith("✅") || toolResults[0].startsWith("📉") || toolResults[0].startsWith("📝") || toolResults[0].startsWith("📋") || toolResults[0].startsWith("📄") ? toolResults[0] : "✅ " + toolResults[0];
         loop = false;
       } else if (toolResults.length > 1) {
         finalMessage = "✅ " + toolResults.join(" ");
