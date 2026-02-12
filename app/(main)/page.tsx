@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type LogEntry = {
   id: string;
@@ -14,6 +16,7 @@ type LogEntry = {
 };
 
 export default function StudioLogPage() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -39,6 +42,15 @@ export default function StudioLogPage() {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || loading) return;
+
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert("Please login to use the Command Center.");
+      router.push("/login");
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
@@ -106,7 +118,7 @@ export default function StudioLogPage() {
                   Analyzing...
                 </>
               ) : (
-                "Log"
+                "Run"
               )}
             </Button>
           </form>

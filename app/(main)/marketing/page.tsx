@@ -293,14 +293,20 @@ export default function MarketingPage() {
             >
               Welcome to Speed.Sales
             </h2>
-            <p className="mt-3 leading-relaxed text-gray-600">
-              Built through extensive learning, we generate optimized,
-              platform-tailored content for every channel — Instagram, X,
-              Facebook, and TikTok.
-            </p>
+            <div className="mt-3 space-y-2 leading-relaxed text-gray-600">
+              <p>
+                Speed.Sales is an AI-powered operating system for makers and
+                artisans.
+              </p>
+              <p>
+                Manage inventory, orders, customer inquiries, and marketing in
+                one place.
+              </p>
+              <p>Focus on creating — we&apos;ll handle the rest.</p>
+            </div>
             <Button
               onClick={closeWelcomeModal}
-              className="mt-6 w-full bg-blue-600 text-white hover:bg-blue-700"
+              className="mt-6 w-full bg-[#2F5D50] text-white hover:bg-[#2F5D50]/90"
             >
               Get Started
             </Button>
