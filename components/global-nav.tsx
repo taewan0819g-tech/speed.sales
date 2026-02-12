@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Sparkles,
   MessageCircle,
+  BookOpen,
   TrendingUp,
   Menu,
   LogOut,
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { path: "/operations-log", label: "Operations Log", icon: ClipboardList },
   { path: "/marketing", label: "Marketing", icon: Sparkles },
   { path: "/cs", label: "CS Master", icon: MessageCircle },
+  { path: "/playbook", label: "Command Playbook", icon: BookOpen },
   { path: "/finance", label: "Insights", icon: TrendingUp },
 ] as const;
 
