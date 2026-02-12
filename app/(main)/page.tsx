@@ -89,11 +89,11 @@ export default function StudioLogPage() {
     <div className="min-h-full bg-ivory">
       <div className="mx-auto max-w-5xl px-4 py-8 lg:py-12">
         {/* Command Center: primary action area */}
+        <h1 className="mb-6 w-full font-serif text-2xl font-bold text-[#2F5D50] text-center md:text-3xl">
+          Command Center
+        </h1>
         <div className="rounded-2xl border border-[#2F6652]/20 bg-white p-8 shadow-xl sm:p-10">
-          <h1 className="font-serif text-2xl font-bold text-[#2F5D50] md:text-3xl">
-            Command Center
-          </h1>
-          <p className="mt-2 font-sans text-sm font-bold text-gray-600">
+          <p className="font-sans text-sm font-bold text-gray-600">
             Just say it naturally. I track orders, inventory, expenses, and
             organize your CS inbox automatically. (Product codes like MUG-001 are
             optional, but recommended to avoid any confusion!)
@@ -107,20 +107,22 @@ export default function StudioLogPage() {
               className="min-h-[120px] resize-none rounded-xl border-gray-200 bg-white font-sans text-gray-700 placeholder:text-gray-400 focus:border-[#2F6652] focus:outline-none focus:ring-2 focus:ring-[#2F6652]/10"
               disabled={loading}
             />
-            <Button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="mt-4 w-full rounded-xl bg-[#2F6652] px-6 py-2.5 font-semibold text-white shadow-md hover:bg-[#2F5D50]/90 sm:w-auto sm:min-w-[160px]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                "Run"
-              )}
-            </Button>
+            <div className="mt-6 flex w-full justify-center">
+              <Button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="w-full rounded-xl bg-[#2F6652] px-6 py-2.5 font-semibold text-white shadow-md hover:bg-[#2F5D50]/90 sm:w-auto sm:min-w-[160px]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Run"
+                )}
+              </Button>
+            </div>
           </form>
 
           {error && (
