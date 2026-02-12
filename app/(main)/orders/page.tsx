@@ -17,7 +17,7 @@ type OrderRow = {
   customer_name: string;
   quantity: number;
   status: string;
-  products: { product_name: string } | null;
+  products: { product_name: string }[] | { product_name: string } | null;
 };
 
 export default async function OrdersPage() {
@@ -123,7 +123,9 @@ export default async function OrdersPage() {
                       {o.customer_name}
                     </td>
                     <td className="px-4 py-3 text-gray-900">
-                      {o.products?.product_name ?? "Product"}
+                      {(Array.isArray(o.products)
+                        ? o.products[0]?.product_name
+                        : o.products?.product_name) || "Unknown Product"}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{o.quantity}</td>
                     <td className="px-4 py-3">
