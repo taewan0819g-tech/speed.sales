@@ -41,6 +41,45 @@ export default async function CSPage() {
       .eq("user_id", u.id);
   }
 
+  async function createInquiry(formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    const customer_name = String(formData.get("customer_name") ?? "").trim() || "Unknown";
+    const content = String(formData.get("content") ?? "").trim();
+    const product_name = formData.get("product_name") ? String(formData.get("product_name")).trim() || null : null;
+    const status = VALID_STATUSES.includes(String(formData.get("status")) as (typeof VALID_STATUSES)[number]) ? formData.get("status") : "open";
+    if (!content) return;
+    await supabaseServer.from("cs_inquiries").insert({
+      user_id: u.id,
+      customer_name,
+      content,
+      product_name,
+      status,
+    });
+  }
+
+  async function updateInquiry(id: string, formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    const customer_name = String(formData.get("customer_name") ?? "").trim();
+    const content = String(formData.get("content") ?? "").trim();
+    const product_name = formData.get("product_name") ? String(formData.get("product_name")).trim() || null : null;
+    if (!customer_name || !content) return;
+    await supabaseServer.from("cs_inquiries").update({ customer_name, content, product_name }).eq("id", id).eq("user_id", u.id);
+  }
+
+  async function deleteInquiry(id: string) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    await supabaseServer.from("cs_inquiries").delete().eq("id", id).eq("user_id", u.id);
+  }
+
   const list = (inquiries ?? []).map((r) => ({
     id: r.id,
     created_at: r.created_at,
@@ -63,7 +102,13 @@ export default async function CSPage() {
         </p>
       </header>
 
-      <CSInbox inquiries={list} updateStatus={updateInquiryStatus} />
+      <CSInbox
+        inquiries={list}
+        updateStatus={updateInquiryStatus}
+        createInquiry={createInquiry}
+        updateInquiry={updateInquiry}
+        deleteInquiry={deleteInquiry}
+      />
     </div>
   );
 }

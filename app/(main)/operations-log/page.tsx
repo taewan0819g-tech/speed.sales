@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ClipboardList } from "lucide-react";
+import { OperationsLogClient } from "./operations-log-client";
 
 export const dynamic = "force-dynamic";
 
@@ -9,18 +10,6 @@ type LogRow = {
   created_at: string;
   content: string;
   kind: string;
-};
-
-const KIND_LABELS: Record<string, string> = {
-  note: "Note",
-  request: "Request",
-  reminder: "Reminder",
-};
-
-const KIND_CLASS: Record<string, string> = {
-  note: "bg-gray-100 text-gray-800 border-gray-200",
-  request: "bg-blue-100 text-blue-800 border-blue-200",
-  reminder: "bg-amber-100 text-amber-800 border-amber-200",
 };
 
 export default async function OperationsLogPage() {
@@ -41,6 +30,36 @@ export default async function OperationsLogPage() {
 
   const list = (logs ?? []) as LogRow[];
 
+  async function createLog(formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    const content = String(formData.get("content") ?? "").trim();
+    const kind = ["note", "request", "reminder"].includes(String(formData.get("kind"))) ? formData.get("kind") : "note";
+    if (!content) return;
+    await supabaseServer.from("operations_logs").insert({ user_id: u.id, content, kind });
+  }
+
+  async function updateLog(id: string, formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    const content = String(formData.get("content") ?? "").trim();
+    const kind = ["note", "request", "reminder"].includes(String(formData.get("kind"))) ? formData.get("kind") : "note";
+    if (!content) return;
+    await supabaseServer.from("operations_logs").update({ content, kind }).eq("id", id).eq("user_id", u.id);
+  }
+
+  async function deleteLog(id: string) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: u } } = await supabaseServer.auth.getUser();
+    if (!u) return;
+    await supabaseServer.from("operations_logs").delete().eq("id", id).eq("user_id", u.id);
+  }
+
   return (
     <div className="flex-1 w-full flex flex-col gap-8 p-8 bg-gray-50 min-h-screen">
       <header>
@@ -53,36 +72,12 @@ export default async function OperationsLogPage() {
         </p>
       </header>
 
-      <section className="space-y-4">
-        {list.length === 0 ? (
-          <p className="rounded-xl border border-gray-200 bg-white p-8 text-center font-sans text-gray-500">
-            No operations logged yet. Add notes from the Command Center.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {list.map((log) => (
-              <div
-                key={log.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-xs font-medium ${KIND_CLASS[log.kind] ?? KIND_CLASS.note}`}
-                  >
-                    {KIND_LABELS[log.kind] ?? log.kind}
-                  </span>
-                  <time className="text-xs text-gray-500">
-                    {new Date(log.created_at).toLocaleString()}
-                  </time>
-                </div>
-                <p className="mt-2 font-sans text-sm text-gray-800">
-                  {log.content}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <OperationsLogClient
+        logs={list}
+        createLog={createLog}
+        updateLog={updateLog}
+        deleteLog={deleteLog}
+      />
     </div>
   );
 }

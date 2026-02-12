@@ -241,34 +241,6 @@ export async function POST(request: NextRequest) {
     }
 
     const productNameTrimmed = productName.trim();
-    const imageUrlList = Array.isArray(imageUrls)
-      ? imageUrls.filter((u): u is string => typeof u === "string")
-      : [];
-    const { data: insertedRow, error: insertError } = await supabase
-      .from("products")
-      .insert({
-        user_id: user.id,
-        product_name: productNameTrimmed,
-        material: material?.trim() || null,
-        size: size?.trim() || null,
-        handmade: Boolean(handmade),
-        origin: origin?.trim() || null,
-        key_features: keyFeatures?.trim() || null,
-        tone: tone?.trim() || null,
-        target_platforms: platformList,
-        image_urls: imageUrlList.length > 0 ? imageUrlList : null,
-      })
-      .select("id, created_at")
-      .single();
-
-    if (insertError) {
-      console.error("Supabase insert error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save product. Please try again." },
-        { status: 500 }
-      );
-    }
-
     const canonicalKeys = platformList.map(
       (p) => PLATFORM_TO_CANONICAL[p] ?? p.toLowerCase().replace(/\s+/g, "_")
     );
@@ -353,24 +325,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (insertedRow?.id) {
-      await supabase
-        .from("products")
-        .update({ generated_contents: result })
-        .eq("id", insertedRow.id);
-      await supabase.from("generated_contents").upsert(
-        { product_id: insertedRow.id, contents: result },
-        { onConflict: "product_id" }
-      );
-    }
-
-    const createdAt =
-      insertedRow?.created_at != null
-        ? new Date(insertedRow.created_at).toISOString()
-        : new Date().toISOString();
+    const createdAt = new Date().toISOString();
 
     return NextResponse.json({
-      productId: insertedRow?.id,
+      productId: null,
       productName: productNameTrimmed,
       createdAt,
       ...result,
